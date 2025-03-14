@@ -183,18 +183,42 @@ class SolarSystemApp {
         // 创建行星几何体
         const geometry = new THREE.SphereGeometry(displayRadius, 32, 32);
         
-        // 创建材质
+        // 加载纹理
         let material;
+        
+        // 创建纹理加载器
+        const textureLoader = new THREE.TextureLoader();
         
         // 对于太阳，添加发光效果
         if (key === 'sun') {
-            material = new THREE.MeshBasicMaterial({ color: planetData.color });
+            // 尝试加载纹理，如果失败则使用颜色
+            try {
+                const texture = textureLoader.load(planetData.texture);
+                material = new THREE.MeshBasicMaterial({ 
+                    map: texture,
+                    color: planetData.color 
+                });
+            } catch (error) {
+                console.error(`无法加载${key}的纹理:`, error);
+                material = new THREE.MeshBasicMaterial({ color: planetData.color });
+            }
         } else {
-            material = new THREE.MeshStandardMaterial({ 
-                color: planetData.color,
-                roughness: 0.7,
-                metalness: 0.3
-            });
+            // 尝试加载纹理，如果失败则使用颜色
+            try {
+                const texture = textureLoader.load(planetData.texture);
+                material = new THREE.MeshStandardMaterial({ 
+                    map: texture,
+                    roughness: 0.7,
+                    metalness: 0.3
+                });
+            } catch (error) {
+                console.error(`无法加载${key}的纹理:`, error);
+                material = new THREE.MeshStandardMaterial({ 
+                    color: planetData.color,
+                    roughness: 0.7,
+                    metalness: 0.3
+                });
+            }
         }
         
         // 创建网格
@@ -493,15 +517,39 @@ class SolarSystemApp {
         const displayRadius = Math.log(planetData.radius) * 0.2 * planetData.sceneScale;
         const geometry = new THREE.SphereGeometry(displayRadius, 32, 32);
         
+        // 创建纹理加载器
+        const textureLoader = new THREE.TextureLoader();
+        
         let material;
         if (planetKey === 'sun') {
-            material = new THREE.MeshBasicMaterial({ color: planetData.color });
+            // 尝试加载纹理，如果失败则使用颜色
+            try {
+                const texture = textureLoader.load(planetData.texture);
+                material = new THREE.MeshBasicMaterial({ 
+                    map: texture,
+                    color: planetData.color 
+                });
+            } catch (error) {
+                console.error(`无法加载${planetKey}的纹理:`, error);
+                material = new THREE.MeshBasicMaterial({ color: planetData.color });
+            }
         } else {
-            material = new THREE.MeshStandardMaterial({ 
-                color: planetData.color,
-                roughness: 0.7,
-                metalness: 0.3
-            });
+            // 尝试加载纹理，如果失败则使用颜色
+            try {
+                const texture = textureLoader.load(planetData.texture);
+                material = new THREE.MeshStandardMaterial({ 
+                    map: texture,
+                    roughness: 0.7,
+                    metalness: 0.3
+                });
+            } catch (error) {
+                console.error(`无法加载${planetKey}的纹理:`, error);
+                material = new THREE.MeshStandardMaterial({ 
+                    color: planetData.color,
+                    roughness: 0.7,
+                    metalness: 0.3
+                });
+            }
         }
         
         const planetMesh = new THREE.Mesh(geometry, material);

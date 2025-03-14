@@ -1,0 +1,147 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #000;
+    color: #fff;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+#container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#solar-system {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#planet-info {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    transition: opacity 0.3s ease;
+}
+
+#planet-info.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.planet-details {
+    width: 80%;
+    max-width: 1000px;
+    background-color: rgba(20, 20, 40, 0.8);
+    border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#planet-name {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #f0f0ff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+#planet-model {
+    width: 300px;
+    height: 300px;
+    margin: 20px auto;
+}
+
+#planet-data {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.data-item {
+    background-color: rgba(40, 40, 80, 0.6);
+    padding: 15px;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+}
+
+.data-label {
+    font-size: 0.9rem;
+    color: #aaa;
+    margin-bottom: 5px;
+}
+
+.data-value {
+    font-size: 1.2rem;
+    color: #fff;
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #aaa;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: #fff;
+}
+
+.planet {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.planet:hover {
+    transform: scale(1.1);
+}
+
+.orbit {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    pointer-events: none;
+}
+
+@media (max-width: 768px) {
+    .planet-details {
+        width: 95%;
+        padding: 15px;
+    }
+    
+    #planet-model {
+        width: 200px;
+        height: 200px;
+    }
+    
+    #planet-data {
+        grid-template-columns: 1fr;
+    }
+}

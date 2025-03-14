@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>太阳系行星运动模拟</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="container">
+        <div id="solar-system">
+            <!-- 太阳系将通过JavaScript动态生成 -->
+        </div>
+        <div id="planet-info" class="hidden">
+            <div class="close-btn">×</div>
+            <div class="planet-details">
+                <h2 id="planet-name"></h2>
+                <div id="planet-model"></div>
+                <div id="planet-data">
+                    <!-- 行星数据将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="js/data.js" type="module"></script>
+    <script src="js/app.js" type="module"></script>
+</body>
+</html>

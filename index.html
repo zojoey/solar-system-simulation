@@ -25,6 +25,69 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script>
+        // 确保Three.js和OrbitControls加载完成
+        window.addEventListener('load', function() {
+            // 显示加载状态
+            const container = document.getElementById('container');
+            let loadingMessage = document.createElement('div');
+            loadingMessage.id = 'loading-message';
+            loadingMessage.textContent = '正在加载资源...';
+            loadingMessage.style.position = 'absolute';
+            loadingMessage.style.top = '50%';
+            loadingMessage.style.left = '50%';
+            loadingMessage.style.transform = 'translate(-50%, -50%)';
+            loadingMessage.style.color = 'white';
+            loadingMessage.style.fontSize = '24px';
+            loadingMessage.style.zIndex = '1000';
+            container.appendChild(loadingMessage);
+            
+            // 检查Three.js是否加载
+            if (typeof THREE === 'undefined') {
+                console.error('Three.js未能加载，尝试从备用源加载');
+                const script = document.createElement('script');
+                script.src = 'https://threejs.org/build/three.min.js';
+                script.onload = checkDependencies;
+                script.onerror = handleLoadError;
+                document.head.appendChild(script);
+            } else if (typeof THREE.OrbitControls === 'undefined') {
+                // 如果Three.js已加载但OrbitControls未加载
+                console.error('OrbitControls未能加载，尝试从备用源加载');
+                const script = document.createElement('script');
+                script.src = 'https://threejs.org/examples/js/controls/OrbitControls.js';
+                script.onload = checkDependencies;
+                script.onerror = handleLoadError;
+                document.head.appendChild(script);
+            } else {
+                // 所有依赖已加载
+                removeLoadingMessage();
+            }
+            
+            // 检查所有依赖是否已加载
+            function checkDependencies() {
+                if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
+                    console.log('所有依赖已成功加载');
+                    removeLoadingMessage();
+                }
+            }
+            
+            // 处理加载错误
+            function handleLoadError(e) {
+                console.error('资源加载失败:', e);
+                if (loadingMessage) {
+                    loadingMessage.textContent = '资源加载失败，请刷新页面重试';
+                    loadingMessage.style.color = 'red';
+                }
+            }
+            
+            // 移除加载消息
+            function removeLoadingMessage() {
+                if (loadingMessage && loadingMessage.parentNode) {
+                    loadingMessage.parentNode.removeChild(loadingMessage);
+                }
+            }
+        });
+    </script>
     <script src="js/data.js" type="module"></script>
     <script src="js/app.js" type="module"></script>
 </body>

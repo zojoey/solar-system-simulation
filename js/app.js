@@ -140,20 +140,53 @@ class SolarSystemApp {
             // 计算在轨道平面上的投影角度
             const angle = Math.atan2(realPosition.z, realPosition.x);
             
-            // 计算行星位置，保持轨道半径不变，但使用真实的角度
-            const x = Math.cos(angle) * orbitInfo.radius;
-            const z = Math.sin(angle) * orbitInfo.radius;
-            
-            // 计算轨道倾角影响的y坐标
-            // 使用realPosition的y值的比例来确定在可视化中的高度
-            // 缩放因子用于控制可视化效果中的轨道倾角
-            const inclination = Math.sqrt(realPosition.x * realPosition.x + realPosition.z * realPosition.z) > 0.001 ?
-                realPosition.y / Math.sqrt(realPosition.x * realPosition.x + realPosition.z * realPosition.z) : 0;
-            const yScale = 0.2; // 控制轨道倾角的可视化效果
-            const y = inclination * orbitInfo.radius * yScale;
-            
-            // 更新行星位置
-            planet.position.set(x, y, z);
+            // 检查是否有椭圆轨道参数
+            if (orbitInfo.a && orbitInfo.b) {
+                // 使用椭圆方程计算行星位置
+                const a = orbitInfo.a;
+                const b = orbitInfo.b;
+                
+                // 计算行星在椭圆轨道上的位置
+                const xOrbit = a * Math.cos(angle);
+                const zOrbit = b * Math.sin(angle);
+                
+                // 考虑轨道倾角，将轨道平面上的坐标转换到世界坐标系
+                if (orbitInfo.inclination) {
+                    // 将角度转换为弧度
+                    const inclinationRad = (orbitInfo.inclination * Math.PI) / 180;
+                    
+                    // 计算考虑轨道倾角后的坐标
+                    const x = xOrbit;
+                    const y = zOrbit * Math.sin(inclinationRad);
+                    const z = zOrbit * Math.cos(inclinationRad);
+                    
+                    // 更新行星位置
+                    planet.position.set(x, y, z);
+                } else {
+                    // 如果没有轨道倾角数据，使用原来的方法
+                    planet.position.set(xOrbit, 0, zOrbit);
+                }
+            } else {
+                // 如果没有椭圆轨道参数，使用圆形轨道
+                const x = Math.cos(angle) * orbitInfo.radius;
+                const z = Math.sin(angle) * orbitInfo.radius;
+                
+                // 计算轨道倾角影响的y坐标
+                if (orbitInfo.inclination) {
+                    // 将角度转换为弧度
+                    const inclinationRad = (orbitInfo.inclination * Math.PI) / 180;
+                    
+                    // 计算考虑轨道倾角后的坐标
+                    const y = z * Math.sin(inclinationRad);
+                    const newZ = z * Math.cos(inclinationRad);
+                    
+                    // 更新行星位置
+                    planet.position.set(x, y, newZ);
+                } else {
+                    // 如果没有轨道倾角数据，使用原来的方法
+                    planet.position.set(x, 0, z);
+                }
+            }
         }
     }
     
@@ -191,34 +224,59 @@ class SolarSystemApp {
         
         // 对于太阳，添加发光效果
         if (key === 'sun') {
-            // 尝试加载纹理，如果失败则使用颜色
-            try {
-                const texture = textureLoader.load(planetData.texture);
-                material = new THREE.MeshBasicMaterial({ 
-                    map: texture,
-                    color: planetData.color 
-                });
-            } catch (error) {
-                console.error(`无法加载${key}的纹理:`, error);
-                material = new THREE.MeshBasicMaterial({ color: planetData.color });
-            }
+            // 先创建基本材质，确保即使纹理加载失败也能显示
+            material = new THREE.MeshBasicMaterial({ 
+                color: planetData.color,
+                emissive: planetData.color,
+                emissiveIntensity: 0.8
+            });
+            
+            // 异步加载纹理
+            textureLoader.load(
+                // 资源URL
+                planetData.texture,
+                
+                // 加载完成回调
+                function(texture) {
+                    material.map = texture;
+                    material.needsUpdate = true;
+                },
+                
+                // 加载进度回调
+                undefined,
+                
+                // 加载错误回调
+                function(error) {
+                    console.error(`无法加载${key}的纹理:`, error);
+                }
+            );
         } else {
-            // 尝试加载纹理，如果失败则使用颜色
-            try {
-                const texture = textureLoader.load(planetData.texture);
-                material = new THREE.MeshStandardMaterial({ 
-                    map: texture,
-                    roughness: 0.7,
-                    metalness: 0.3
-                });
-            } catch (error) {
-                console.error(`无法加载${key}的纹理:`, error);
-                material = new THREE.MeshStandardMaterial({ 
-                    color: planetData.color,
-                    roughness: 0.7,
-                    metalness: 0.3
-                });
-            }
+            // 先创建基本材质，确保即使纹理加载失败也能显示
+            material = new THREE.MeshStandardMaterial({ 
+                color: planetData.color,
+                roughness: 0.7,
+                metalness: 0.3
+            });
+            
+            // 异步加载纹理
+            textureLoader.load(
+                // 资源URL
+                planetData.texture,
+                
+                // 加载完成回调
+                function(texture) {
+                    material.map = texture;
+                    material.needsUpdate = true;
+                },
+                
+                // 加载进度回调
+                undefined,
+                
+                // 加载错误回调
+                function(error) {
+                    console.error(`无法加载${key}的纹理:`, error);
+                }
+            );
         }
         
         // 创建网格
@@ -232,6 +290,15 @@ class SolarSystemApp {
         if (planetData.hasRings) {
             const rings = this.createSaturnRings(displayRadius);
             planet.add(rings);
+        }
+        
+        // 设置行星的轴倾角
+        if (key === 'uranus') {
+            // 天王星的轴倾角接近90度
+            planet.rotation.z = planetData.axialTilt ? (planetData.axialTilt * Math.PI / 180) : (97.77 * Math.PI / 180);
+        } else if (key === 'venus' || key === 'uranus') {
+            // 金星和天王星是逆向自转的行星
+            planet.rotation.y = Math.PI; // 初始旋转180度
         }
         
         return planet;
@@ -269,59 +336,145 @@ class SolarSystemApp {
             minOrbitRadius + distance * 12 : // 内行星使用线性映射，系数从8增加到12
             minOrbitRadius + 24 + Math.pow(distance - 2, 0.4) * 8; // 外行星使用非线性映射，基础值从16增加到24
         
-        const geometry = new THREE.RingGeometry(orbitRadius, orbitRadius + 0.15, 128); // 增加轨道宽度，从0.1增加到0.15
+        // 获取行星名称
+        const planetKey = this.getPlanetKeyByDistance(distance);
+        
+        // 创建椭圆轨道
+        if (planetKey) {
+            // 使用astronomy.js中的轨道参数创建椭圆轨道
+            const segments = 128;
+            const points = [];
+            
+            // 从astronomy.js获取轨道参数
+            const orbitalElements = {
+                mercury: { a: 0.38709927, e: 0.20563593, i: 7.00497902 },
+                venus: { a: 0.72333566, e: 0.00677672, i: 3.39467605 },
+                earth: { a: 1.00000261, e: 0.01671123, i: 0.00001531 },
+                mars: { a: 1.52371034, e: 0.09339410, i: 1.84969142 },
+                jupiter: { a: 5.20288700, e: 0.04838624, i: 1.30439695 },
+                saturn: { a: 9.53667594, e: 0.05386179, i: 2.48599187 },
+                uranus: { a: 19.18916464, e: 0.04725744, i: 0.77263783 },
+                neptune: { a: 30.06992276, e: 0.00859048, i: 1.77004347 }
+            };
+            
+            const orbitalElement = orbitalElements[planetKey];
+            
+            if (orbitalElement) {
+                // 椭圆参数
+                const a = orbitalElement.a; // 半长轴
+                const e = orbitalElement.e; // 偏心率
+                const inclination = orbitalElement.i; // 轨道倾角
+                
+                // 计算椭圆的半短轴
+                const b = a * Math.sqrt(1 - e * e);
+                
+                // 缩放因子，与createOrbit中的缩放保持一致
+                const scaleFactor = distance < 2 ? 
+                    minOrbitRadius + distance * 12 : 
+                    minOrbitRadius + 24 + Math.pow(distance - 2, 0.4) * 8;
+                
+                const scaledA = (a / orbitalElement.a) * scaleFactor;
+                const scaledB = (b / orbitalElement.a) * scaleFactor;
+                
+                // 创建椭圆轨道点
+                for (let i = 0; i <= segments; i++) {
+                    const theta = (i / segments) * Math.PI * 2;
+                    const xOrbit = scaledA * Math.cos(theta);
+                    const zOrbit = scaledB * Math.sin(theta);
+                    
+                    // 考虑轨道倾角，将轨道平面上的坐标转换到世界坐标系
+                    // 这与updatePlanetPositions中的计算方式保持一致
+                    const inclinationRad = (inclination * Math.PI) / 180;
+                    const x = xOrbit;
+                    const y = zOrbit * Math.sin(inclinationRad);
+                    const z = zOrbit * Math.cos(inclinationRad);
+                    
+                    points.push(new THREE.Vector3(x, y, z));
+                }
+                
+                // 创建曲线和管道几何体
+                const curve = new THREE.CatmullRomCurve3(points);
+                const geometry = new THREE.TubeGeometry(curve, segments, 0.075, 8, true);
+                
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: 0x888888,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                
+                const orbit = new THREE.Mesh(geometry, material);
+                
+                // 创建一个组来包含轨道
+                const orbitGroup = new THREE.Group();
+                orbitGroup.add(orbit);
+                
+                // 添加到场景
+                this.scene.add(orbitGroup);
+                
+                // 注意：不再需要旋转轨道组，因为我们已经在创建轨道点时考虑了轨道倾角
+                
+                return { 
+                    mesh: orbitGroup, 
+                    radius: scaleFactor, // 使用缩放后的半长轴作为参考半径
+                    inclination: inclination,
+                    a: scaledA, // 保存缩放后的半长轴
+                    b: scaledB, // 保存缩放后的半短轴
+                    e: e // 保存偏心率
+                };
+            }
+        }
+        
+        // 如果没有找到行星或轨道参数，创建圆形轨道作为后备
+        // 使用点集和曲线创建轨道，与椭圆轨道处理方式保持一致
+        const segments = 128;
+        const points = [];
+        
+        // 创建圆形轨道点
+        for (let i = 0; i <= segments; i++) {
+            const theta = (i / segments) * Math.PI * 2;
+            const x = orbitRadius * Math.cos(theta);
+            const z = orbitRadius * Math.sin(theta);
+            // 默认在XZ平面上
+            points.push(new THREE.Vector3(x, 0, z));
+        }
+        
+        // 创建曲线和管道几何体
+        const curve = new THREE.CatmullRomCurve3(points);
+        const geometry = new THREE.TubeGeometry(curve, segments, 0.075, 8, true);
+        
         const material = new THREE.MeshBasicMaterial({ 
-            color: 0x888888, // 增加轨道颜色亮度，从0x666666改为0x888888
+            color: 0x888888,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.6 // 增加轨道不透明度，从0.5增加到0.6
+            opacity: 0.6
         });
         
         const orbit = new THREE.Mesh(geometry, material);
         
-        // 根据行星名称获取对应的轨道倾角
-        let inclination = 0;
-        const planetKey = this.getPlanetKeyByDistance(distance);
-        
-        if (planetKey) {
-            // 根据用户提供的轨道倾角数据设置倾角
-            switch (planetKey) {
-                case 'mercury': inclination = 7.0; break; // 水星：7.0°
-                case 'venus': inclination = 3.4; break;   // 金星：3.4°
-                case 'earth': inclination = 0.0; break;    // 地球：0°（黄道面以此为基准）
-                case 'mars': inclination = 1.8; break;     // 火星：1.8°
-                case 'jupiter': inclination = 1.3; break;  // 木星：1.3°
-                case 'saturn': inclination = 2.5; break;   // 土星：2.5°
-                case 'uranus': inclination = 0.8; break;   // 天王星：0.8°
-                case 'neptune': inclination = 1.8; break;  // 海王星：1.8°
-                default: inclination = 0.0;
-            }
-        }
-        
-        // 将轨道平面旋转到黄道平面（XZ平面）
-        orbit.rotation.x = Math.PI / 2;
-        
-        // 根据轨道倾角旋转轨道
-        // 将角度转换为弧度
-        const inclinationRad = (inclination * Math.PI) / 180;
-        
-        // 创建一个组来包含轨道，以便可以独立旋转
+        // 创建一个组来包含轨道
         const orbitGroup = new THREE.Group();
         orbitGroup.add(orbit);
-        
-        // 绕X轴旋转轨道组，实现轨道倾角
-        orbitGroup.rotation.x = inclinationRad;
         
         // 添加到场景
         this.scene.add(orbitGroup);
         
-        return { mesh: orbitGroup, radius: orbitRadius, inclination: inclination };
+        return { mesh: orbitGroup, radius: orbitRadius, inclination: 0 };
     }
     
     // 更新行星位置
     updatePlanetPositions(time) {
         for (const [key, planet] of Object.entries(this.planets)) {
-            if (key === 'sun') continue;
+            // 处理太阳自转
+            if (key === 'sun') {
+                const sunData = planet.userData.data;
+                const speedFactor = 3.0;
+                const rotationSpeed = sunData.rotationPeriod !== 0 ? 
+                    (1 / Math.abs(sunData.rotationPeriod)) * 0.05 * speedFactor : 0;
+                
+                planet.rotation.y += rotationSpeed * (sunData.rotationPeriod >= 0 ? 1 : -1);
+                continue;
+            }
             
             const planetData = planet.userData.data;
             const orbitInfo = this.orbits[key];
@@ -337,27 +490,53 @@ class SolarSystemApp {
             const initialAngle = Math.atan2(realPosition.z, realPosition.x);
             const angle = (initialAngle + time * 0.001 * speedFactor * (1 / planetData.orbitalPeriod) * Math.PI * 2) % (Math.PI * 2);
             
-            // 计算行星在轨道平面上的位置（XZ平面）
-            const xOrbit = Math.cos(angle) * orbitInfo.radius;
-            const zOrbit = Math.sin(angle) * orbitInfo.radius;
-            
-            // 考虑轨道倾角，将轨道平面上的坐标转换到世界坐标系
-            // 使用轨道倾角计算行星的实际位置
-            if (orbitInfo.inclination) {
-                // 将角度转换为弧度
-                const inclinationRad = (orbitInfo.inclination * Math.PI) / 180;
+            // 检查是否有椭圆轨道参数
+            if (orbitInfo.a && orbitInfo.b) {
+                // 使用椭圆方程计算行星位置
+                const a = orbitInfo.a;
+                const b = orbitInfo.b;
                 
-                // 计算考虑轨道倾角后的坐标
-                // 这里使用简化的旋转矩阵，只考虑绕X轴的旋转（轨道倾角）
-                const x = xOrbit;
-                const y = zOrbit * Math.sin(inclinationRad);
-                const z = zOrbit * Math.cos(inclinationRad);
+                // 计算行星在椭圆轨道上的位置
+                const xOrbit = a * Math.cos(angle);
+                const zOrbit = b * Math.sin(angle);
                 
-                // 更新行星位置
-                planet.position.set(x, y, z);
+                // 考虑轨道倾角，将轨道平面上的坐标转换到世界坐标系
+                if (orbitInfo.inclination) {
+                    // 将角度转换为弧度
+                    const inclinationRad = (orbitInfo.inclination * Math.PI) / 180;
+                    
+                    // 计算考虑轨道倾角后的坐标
+                    const x = xOrbit;
+                    const y = zOrbit * Math.sin(inclinationRad);
+                    const z = zOrbit * Math.cos(inclinationRad);
+                    
+                    // 更新行星位置
+                    planet.position.set(x, y, z);
+                } else {
+                    // 如果没有轨道倾角数据，使用原来的方法
+                    planet.position.set(xOrbit, 0, zOrbit);
+                }
             } else {
-                // 如果没有轨道倾角数据，使用原来的方法
-                planet.position.set(xOrbit, 0, zOrbit);
+                // 如果没有椭圆轨道参数，使用圆形轨道
+                const xOrbit = Math.cos(angle) * orbitInfo.radius;
+                const zOrbit = Math.sin(angle) * orbitInfo.radius;
+                
+                // 考虑轨道倾角，将轨道平面上的坐标转换到世界坐标系
+                if (orbitInfo.inclination) {
+                    // 将角度转换为弧度
+                    const inclinationRad = (orbitInfo.inclination * Math.PI) / 180;
+                    
+                    // 计算考虑轨道倾角后的坐标
+                    const x = xOrbit;
+                    const y = zOrbit * Math.sin(inclinationRad);
+                    const z = zOrbit * Math.cos(inclinationRad);
+                    
+                    // 更新行星位置
+                    planet.position.set(x, y, z);
+                } else {
+                    // 如果没有轨道倾角数据，使用原来的方法
+                    planet.position.set(xOrbit, 0, zOrbit);
+                }
             }
             
             // 更新行星自转 - 增加自转速度系数

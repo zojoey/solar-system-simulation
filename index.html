@@ -5,8 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>太阳系行星运动模拟</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* 加载状态样式 */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: #fff;
+            transition: opacity 0.5s ease;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #error-message {
+            display: none;
+            color: #ff5555;
+            text-align: center;
+            max-width: 80%;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
+    <!-- 加载状态指示器 -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>加载太阳系模型中...</div>
+        <div id="error-message"></div>
+    </div>
+    
     <div id="container">
         <div id="solar-system">
             <!-- 太阳系将通过JavaScript动态生成 -->
@@ -22,73 +69,113 @@
             </div>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    
+    <!-- 资源加载检查脚本 -->
+    <script>
+        // 资源加载状态跟踪
+        const resourceStatus = {
+            threeJs: false,
+            orbitControls: false,
+            gsap: false,
+            dataJs: false,
+            appJs: false
+        };
+        
+        // 显示错误信息
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        // 检查所有资源是否已加载
+        function checkAllResourcesLoaded() {
+            for (const resource in resourceStatus) {
+                if (!resourceStatus[resource]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // 隐藏加载状态
+        function hideLoading() {
+            if (checkAllResourcesLoaded()) {
+                const loadingElement = document.getElementById('loading');
+                loadingElement.style.opacity = '0';
+                setTimeout(() => {
+                    loadingElement.style.display = 'none';
+                }, 500);
+            }
+        }
+        
+        // 设置资源加载超时
+        setTimeout(() => {
+            if (!checkAllResourcesLoaded()) {
+                showError('加载时间过长，请检查网络连接或刷新页面重试。');
+            }
+        }, 15000); // 15秒超时
+    </script>
+    <!-- 加载Three.js库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
+            onerror="showError('无法加载Three.js库，请检查网络连接。'); console.error('Three.js加载失败');"
+            onload="resourceStatus.threeJs = true; console.log('Three.js加载成功'); hideLoading();"></script>
+    
+    <!-- 加载OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"
+            onerror="showError('无法加载OrbitControls，请检查网络连接。'); console.error('OrbitControls加载失败');"
+            onload="resourceStatus.orbitControls = true; console.log('OrbitControls加载成功'); hideLoading();"></script>
+    
+    <!-- 加载GSAP动画库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"
+            onerror="showError('无法加载GSAP库，请检查网络连接。'); console.error('GSAP加载失败');"
+            onload="resourceStatus.gsap = true; console.log('GSAP加载成功'); hideLoading();"></script>
+    
+    <!-- 备用资源加载 -->
     <script>
         // 确保Three.js和OrbitControls加载完成
         window.addEventListener('load', function() {
-            // 显示加载状态
-            const container = document.getElementById('container');
-            let loadingMessage = document.createElement('div');
-            loadingMessage.id = 'loading-message';
-            loadingMessage.textContent = '正在加载资源...';
-            loadingMessage.style.position = 'absolute';
-            loadingMessage.style.top = '50%';
-            loadingMessage.style.left = '50%';
-            loadingMessage.style.transform = 'translate(-50%, -50%)';
-            loadingMessage.style.color = 'white';
-            loadingMessage.style.fontSize = '24px';
-            loadingMessage.style.zIndex = '1000';
-            container.appendChild(loadingMessage);
-            
-            // 检查Three.js是否加载
             if (typeof THREE === 'undefined') {
                 console.error('Three.js未能加载，尝试从备用源加载');
                 const script = document.createElement('script');
                 script.src = 'https://threejs.org/build/three.min.js';
-                script.onload = checkDependencies;
-                script.onerror = handleLoadError;
+                script.onload = function() {
+                    resourceStatus.threeJs = true;
+                    console.log('Three.js从备用源加载成功');
+                    hideLoading();
+                };
+                script.onerror = function() {
+                    showError('无法从备用源加载Three.js，请检查网络连接。');
+                    console.error('从备用源加载Three.js失败');
+                };
                 document.head.appendChild(script);
-            } else if (typeof THREE.OrbitControls === 'undefined') {
-                // 如果Three.js已加载但OrbitControls未加载
+            }
+            
+            if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
                 console.error('OrbitControls未能加载，尝试从备用源加载');
                 const script = document.createElement('script');
                 script.src = 'https://threejs.org/examples/js/controls/OrbitControls.js';
-                script.onload = checkDependencies;
-                script.onerror = handleLoadError;
+                script.onload = function() {
+                    resourceStatus.orbitControls = true;
+                    console.log('OrbitControls从备用源加载成功');
+                    hideLoading();
+                };
+                script.onerror = function() {
+                    showError('无法从备用源加载OrbitControls，请检查网络连接。');
+                    console.error('从备用源加载OrbitControls失败');
+                };
                 document.head.appendChild(script);
-            } else {
-                // 所有依赖已加载
-                removeLoadingMessage();
-            }
-            
-            // 检查所有依赖是否已加载
-            function checkDependencies() {
-                if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
-                    console.log('所有依赖已成功加载');
-                    removeLoadingMessage();
-                }
-            }
-            
-            // 处理加载错误
-            function handleLoadError(e) {
-                console.error('资源加载失败:', e);
-                if (loadingMessage) {
-                    loadingMessage.textContent = '资源加载失败，请刷新页面重试';
-                    loadingMessage.style.color = 'red';
-                }
-            }
-            
-            // 移除加载消息
-            function removeLoadingMessage() {
-                if (loadingMessage && loadingMessage.parentNode) {
-                    loadingMessage.parentNode.removeChild(loadingMessage);
-                }
             }
         });
     </script>
-    <script src="js/data.js" type="module"></script>
-    <script src="js/app.js" type="module"></script>
+    
+    <!-- 加载应用程序脚本 -->
+    <script src="js/data.js" type="module"
+            onerror="showError('无法加载数据文件，请检查网络连接。'); console.error('data.js加载失败');"
+            onload="resourceStatus.dataJs = true; console.log('data.js加载成功'); hideLoading();"></script>
+    
+    <script src="js/app.js" type="module"
+            onerror="showError('无法加载应用程序，请检查网络连接。'); console.error('app.js加载失败');"
+            onload="resourceStatus.appJs = true; console.log('app.js加载成功'); hideLoading();"></script>
 </body>
 </html>

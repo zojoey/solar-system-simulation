@@ -222,59 +222,97 @@ class SolarSystemApp {
         // 创建纹理加载器
         const textureLoader = new THREE.TextureLoader();
         
+        // 添加错误处理，防止纹理加载失败导致黑屏
+        textureLoader.crossOrigin = 'anonymous';
+        
+        // 添加加载管理器
+        const loadingManager = new THREE.LoadingManager();
+        loadingManager.onError = function(url) {
+            console.error('加载纹理失败:', url);
+            // 使用相对路径重试
+            if (url.startsWith('http')) {
+                const relativePath = url.split('/').pop();
+                console.log('尝试使用相对路径加载:', relativePath);
+                return 'textures/' + relativePath;
+            }
+        };
+        textureLoader.manager = loadingManager;
+        
         // 对于太阳，添加发光效果
         if (key === 'sun') {
-            // 先创建基本材质，确保即使纹理加载失败也能显示
-            material = new THREE.MeshBasicMaterial({ 
-                color: planetData.color,
-                emissive: planetData.color,
-                emissiveIntensity: 0.8
-            });
+            // 预先创建基础材质，确保即使纹理加载失败也能显示
+            material = new THREE.MeshBasicMaterial({ color: planetData.color });
             
-            // 异步加载纹理
+            // 尝试加载纹理
             textureLoader.load(
-                // 资源URL
                 planetData.texture,
-                
-                // 加载完成回调
-                function(texture) {
+                // 成功回调
+                (texture) => {
                     material.map = texture;
                     material.needsUpdate = true;
                 },
-                
-                // 加载进度回调
+                // 进度回调
                 undefined,
-                
-                // 加载错误回调
-                function(error) {
+                // 错误回调
+                (error) => {
                     console.error(`无法加载${key}的纹理:`, error);
+                    // 尝试使用相对路径重新加载
+                    const relativePath = planetData.texture.split('/').pop();
+                    if (relativePath) {
+                        console.log(`尝试使用相对路径重新加载${key}的纹理:`, relativePath);
+                        textureLoader.load(
+                            `textures/${relativePath}`,
+                            (texture) => {
+                                material.map = texture;
+                                material.needsUpdate = true;
+                                console.log(`${key}的纹理使用相对路径加载成功`);
+                            },
+                            undefined,
+                            (secondError) => {
+                                console.error(`使用相对路径加载${key}的纹理仍然失败:`, secondError);
+                            }
+                        );
+                    }
                 }
             );
         } else {
-            // 先创建基本材质，确保即使纹理加载失败也能显示
+            // 预先创建基础材质，确保即使纹理加载失败也能显示
             material = new THREE.MeshStandardMaterial({ 
                 color: planetData.color,
                 roughness: 0.7,
                 metalness: 0.3
             });
             
-            // 异步加载纹理
+            // 尝试加载纹理
             textureLoader.load(
-                // 资源URL
                 planetData.texture,
-                
-                // 加载完成回调
-                function(texture) {
+                // 成功回调
+                (texture) => {
                     material.map = texture;
                     material.needsUpdate = true;
                 },
-                
-                // 加载进度回调
+                // 进度回调
                 undefined,
-                
-                // 加载错误回调
-                function(error) {
+                // 错误回调
+                (error) => {
                     console.error(`无法加载${key}的纹理:`, error);
+                    // 尝试使用相对路径重新加载
+                    const relativePath = planetData.texture.split('/').pop();
+                    if (relativePath) {
+                        console.log(`尝试使用相对路径重新加载${key}的纹理:`, relativePath);
+                        textureLoader.load(
+                            `textures/${relativePath}`,
+                            (texture) => {
+                                material.map = texture;
+                                material.needsUpdate = true;
+                                console.log(`${key}的纹理使用相对路径加载成功`);
+                            },
+                            undefined,
+                            (secondError) => {
+                                console.error(`使用相对路径加载${key}的纹理仍然失败:`, secondError);
+                            }
+                        );
+                    }
                 }
             );
         }
@@ -464,17 +502,19 @@ class SolarSystemApp {
     
     // 更新行星位置
     updatePlanetPositions(time) {
-        for (const [key, planet] of Object.entries(this.planets)) {
-            // 处理太阳自转
-            if (key === 'sun') {
-                const sunData = planet.userData.data;
-                const speedFactor = 3.0;
-                const rotationSpeed = sunData.rotationPeriod !== 0 ? 
-                    (1 / Math.abs(sunData.rotationPeriod)) * 0.05 * speedFactor : 0;
-                
-                planet.rotation.y += rotationSpeed * (sunData.rotationPeriod >= 0 ? 1 : -1);
-                continue;
-            }
+        try {
+            for (const [key, planet] of Object.entries(this.planets)) {
+                // 如果是太阳，只更新自转
+                if (key === 'sun') {
+                    const sunData = planet.userData.data;
+                    // 使用太阳的自转周期数据计算自转速度
+                    const rotationSpeed = sunData.rotationPeriod !== 0 ? 
+                        (1 / Math.abs(sunData.rotationPeriod)) * 0.05 * 3.0 : 0; // 使用与行星相同的速度系数
+                    
+                    // 更新太阳自转 - 确保旋转方向正确
+                    planet.rotation.y += rotationSpeed * (sunData.rotationPeriod >= 0 ? 1 : -1);
+                    continue;
+                }
             
             const planetData = planet.userData.data;
             const orbitInfo = this.orbits[key];
@@ -549,6 +589,10 @@ class SolarSystemApp {
             if (key === 'uranus') {
                 planet.rotation.z = planetData.axialTilt * (Math.PI / 180);
             }
+        }
+        } catch (error) {
+            console.error('更新行星位置时发生错误:', error);
+            // 即使出错也继续执行，防止整个应用崩溃
         }
     }
     
@@ -699,36 +743,65 @@ class SolarSystemApp {
         // 创建纹理加载器
         const textureLoader = new THREE.TextureLoader();
         
+        // 添加错误处理，防止纹理加载失败导致黑屏
+        textureLoader.crossOrigin = 'anonymous';
+        
+        // 添加加载管理器
+        const loadingManager = new THREE.LoadingManager();
+        loadingManager.onError = function(url) {
+            console.error('加载纹理失败:', url);
+            // 使用相对路径重试
+            if (url.startsWith('http')) {
+                const relativePath = url.split('/').pop();
+                console.log('尝试使用相对路径加载:', relativePath);
+                return 'textures/' + relativePath;
+            }
+        };
+        textureLoader.manager = loadingManager;
+        
         let material;
         if (planetKey === 'sun') {
-            // 尝试加载纹理，如果失败则使用颜色
-            try {
-                const texture = textureLoader.load(planetData.texture);
-                material = new THREE.MeshBasicMaterial({ 
-                    map: texture,
-                    color: planetData.color 
-                });
-            } catch (error) {
-                console.error(`无法加载${planetKey}的纹理:`, error);
-                material = new THREE.MeshBasicMaterial({ color: planetData.color });
-            }
+            // 预先创建基础材质，确保即使纹理加载失败也能显示
+            material = new THREE.MeshBasicMaterial({ color: planetData.color });
+            
+            // 尝试加载纹理
+            textureLoader.load(
+                planetData.texture,
+                // 成功回调
+                (texture) => {
+                    material.map = texture;
+                    material.needsUpdate = true;
+                },
+                // 进度回调
+                undefined,
+                // 错误回调
+                (error) => {
+                    console.error(`无法加载${planetKey}的纹理:`, error);
+                }
+            );
         } else {
-            // 尝试加载纹理，如果失败则使用颜色
-            try {
-                const texture = textureLoader.load(planetData.texture);
-                material = new THREE.MeshStandardMaterial({ 
-                    map: texture,
-                    roughness: 0.7,
-                    metalness: 0.3
-                });
-            } catch (error) {
-                console.error(`无法加载${planetKey}的纹理:`, error);
-                material = new THREE.MeshStandardMaterial({ 
-                    color: planetData.color,
-                    roughness: 0.7,
-                    metalness: 0.3
-                });
-            }
+            // 预先创建基础材质，确保即使纹理加载失败也能显示
+            material = new THREE.MeshStandardMaterial({ 
+                color: planetData.color,
+                roughness: 0.7,
+                metalness: 0.3
+            });
+            
+            // 尝试加载纹理
+            textureLoader.load(
+                planetData.texture,
+                // 成功回调
+                (texture) => {
+                    material.map = texture;
+                    material.needsUpdate = true;
+                },
+                // 进度回调
+                undefined,
+                // 错误回调
+                (error) => {
+                    console.error(`无法加载${planetKey}的纹理:`, error);
+                }
+            );
         }
         
         const planetMesh = new THREE.Mesh(geometry, material);
@@ -776,14 +849,20 @@ class SolarSystemApp {
     animate() {
         requestAnimationFrame(this.animate.bind(this));
         
-        // 更新行星位置
-        this.updatePlanetPositions(performance.now());
-        
-        // 更新控制器
-        this.controls.update();
-        
-        // 渲染场景
-        this.renderer.render(this.scene, this.camera);
+        try {
+            // 更新行星位置
+            this.updatePlanetPositions(performance.now());
+            
+            // 更新控制器
+            this.controls.update();
+            
+            // 渲染场景
+            this.renderer.render(this.scene, this.camera);
+        } catch (error) {
+            console.error('动画循环中发生错误:', error);
+            // 即使出错也继续请求下一帧，防止整个应用崩溃
+            requestAnimationFrame(this.animate.bind(this));
+        }
     }
 }
 

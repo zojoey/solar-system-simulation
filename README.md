@@ -7,7 +7,7 @@
 部署完成后，您可以通过以下URL访问太阳系模拟：
 
 ```
-https://您的用户名.github.io/solar-system-simulation/
+https://zojoey.github.io/solar-system-simulation/
 ```
 
 ## 功能特点
@@ -40,8 +40,14 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M main
-git remote add origin https://github.com/您的用户名/solar-system-simulation.git
+git remote add origin https://github.com/zojoey/solar-system-simulation.git
 git push -u origin main
+```
+
+更新GitHub Pages URL时，请使用以下命令（注意双引号闭合）：
+
+```bash
+git commit -am "更新README.md中的GitHub Pages URL"
 ```
 
 **方法二：直接在GitHub网页上传**
@@ -62,7 +68,7 @@ git push -u origin main
 
 ### 4. 验证部署
 
-1. 访问GitHub Pages生成的URL（通常是`https://您的用户名.github.io/solar-system-simulation/`）
+1. 访问GitHub Pages生成的URL（通常是`https://zojoey.github.io/solar-system-simulation/`）
 2. 确认太阳系模型能够正常加载和运行
 3. 测试交互功能，如点击行星查看详情
 

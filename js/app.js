@@ -71,6 +71,15 @@ class SolarSystemApp {
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
+        this.controls.enableZoom = true;
+        this.controls.enablePan = true;
+        this.controls.enableRotate = true;
+        this.controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
+        this.controls.rotateSpeed = 0.8;
+        this.controls.zoomSpeed = 1.0;
         
         // 窗口大小调整事件
         window.addEventListener('resize', () => {
@@ -608,11 +617,18 @@ class SolarSystemApp {
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         
-        // 点击事件监听
-        this.renderer.domElement.addEventListener('click', (event) => {
-            // 计算鼠标位置
-            this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        // 处理交互事件的通用函数
+        const handleInteraction = (event) => {
+            // 阻止默认行为，防止滚动或其他干扰
+            event.preventDefault();
+            
+            // 获取事件坐标（兼容鼠标点击和触摸事件）
+            const clientX = event.clientX || (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
+            const clientY = event.clientY || (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
+            
+            // 计算标准化的设备坐标
+            this.mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(clientY / window.innerHeight) * 2 + 1;
             
             // 更新射线投射器
             this.raycaster.setFromCamera(this.mouse, this.camera);
@@ -625,19 +641,37 @@ class SolarSystemApp {
                 const planet = intersects[0].object;
                 this.showPlanetDetails(planet.userData.key);
             }
-        });
+        };
         
-        // 关闭按钮点击事件
-        document.querySelector('.close-btn').addEventListener('click', () => {
+        // 鼠标点击事件监听
+        this.renderer.domElement.addEventListener('click', handleInteraction);
+        
+        // 触摸事件监听（移动设备支持）
+        this.renderer.domElement.addEventListener('touchstart', handleInteraction);
+        
+        // 关闭按钮点击和触摸事件
+        const closeBtn = document.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
             this.hidePlanetDetails();
         });
+        closeBtn.addEventListener('touchstart', (event) => {
+            event.preventDefault(); // 防止触摸事件被误解为滚动
+            this.hidePlanetDetails();
+        }, {passive: false});
         
-        // 点击空白处返回太阳系视图
-        document.getElementById('planet-info').addEventListener('click', (event) => {
-            if (event.target === document.getElementById('planet-info')) {
+        // 点击或触摸空白处返回太阳系视图
+        const planetInfo = document.getElementById('planet-info');
+        planetInfo.addEventListener('click', (event) => {
+            if (event.target === planetInfo) {
                 this.hidePlanetDetails();
             }
         });
+        planetInfo.addEventListener('touchstart', (event) => {
+            if (event.target === planetInfo) {
+                event.preventDefault(); // 防止触摸事件被误解为滚动
+                this.hidePlanetDetails();
+            }
+        }, {passive: false});
     }
     
     // 显示行星详情
@@ -821,6 +855,15 @@ class SolarSystemApp {
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.enableRotate = true;
+        controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
+        controls.rotateSpeed = 0.8;
+        controls.zoomSpeed = 1.0;
         
         // 动画函数
         const animate = () => {

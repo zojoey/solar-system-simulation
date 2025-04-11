@@ -617,6 +617,9 @@ class SolarSystemApp {
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         
+        // 添加窗口大小变化事件监听器，确保弹出页滚动条正确显示
+        window.addEventListener('resize', this.handleWindowResize.bind(this));
+        
         // 处理交互事件的通用函数
         const handleInteraction = (event) => {
             // 阻止默认行为，防止滚动或其他干扰
@@ -886,6 +889,25 @@ class SolarSystemApp {
     // 隐藏行星详情
     hidePlanetDetails() {
         document.getElementById('planet-info').classList.add('hidden');
+    }
+    
+    // 处理窗口大小变化
+    handleWindowResize() {
+        // 更新相机和渲染器
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        // 检查星球信息弹出页是否显示
+        const planetInfo = document.getElementById('planet-info');
+        if (!planetInfo.classList.contains('hidden')) {
+            // 获取星球详情容器
+            const planetDetails = document.querySelector('.planet-details');
+            
+            // 根据窗口高度动态设置最大高度
+            const windowHeight = window.innerHeight;
+            planetDetails.style.maxHeight = `${windowHeight * 0.9}px`;
+        }
     }
     
     // 动画循环
